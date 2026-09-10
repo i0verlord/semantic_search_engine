@@ -1,0 +1,124 @@
+<!-- index.html -->
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Semantic Search Engine</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-slate-50 text-slate-800 font-sans min-h-screen p-8">
+        <div class="max-w-4xl mx-auto space-y-8">
+            <h1 class="text-4xl font-bold text-slate-900 tracking-tight">Semantic Document Engine</h1>
+
+            <!-- Upload Card -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-xl font-semibold mb-4">1. Ingest Technical Document</h2>
+                <div class="flex flex-wrap items-center gap-4">
+                    <input type="file" id="fileInput" accept=".pdf" class="block w-full sm:w-auto flex-1 text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" />
+                    <button onclick="uploadFile()" id="uploadBtn" class="bg-indigo-600 text-white px-6 py-2 rounded-md font-medium hover:bg-indigo-700 transition-colors whitespace-nowrap">Upload PDF</button>
+                </div>
+                <p id="uploadStatus" class="mt-3 text-sm text-slate-600 hidden"></p>
+            </div>
+
+            <!-- Search Card -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-xl font-semibold mb-4">2. Query Documents</h2>
+                <div class="flex items-center gap-4 mb-6">
+                    <input type="text" id="searchInput" placeholder="Ask a question or search for concepts..." class="flex-1 px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <button onclick="performSearch()" id="searchBtn" class="bg-slate-900 text-white px-6 py-2 rounded-md font-medium hover:bg-slate-800 transition-colors">Search</button>
+                </div>
+
+                <div id="resultsContainer" class="space-y-4">
+                    <!-- Search results will inject here -->
+                </div>
+            </div>
+        </div>
+
+        <script>
+            async function uploadFile() {
+                const fileInput = document.getElementById("fileInput");
+                const statusText = document.getElementById("uploadStatus");
+                const btn = document.getElementById("uploadBtn");
+
+                if (!fileInput.files[0]) {
+                    alert("Please select a PDF file first.");
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append("file", fileInput.files[0]);
+
+                btn.disabled = true;
+                btn.innerText = "Processing...";
+                statusText.classList.remove("hidden");
+                statusText.innerText = "Extracting text and building vector space. This may take a moment...";
+                statusText.className = "mt-3 text-sm text-indigo-600 font-medium";
+
+                try {
+                    const response = await fetch("/upload", { method: "POST", body: formData });
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        statusText.innerText = `✔️ ${data.message}`;
+                        statusText.className = "mt-3 text-sm text-green-600 font-medium";
+                    } else {
+                        throw new Error(data.detail || "Upload failed");
+                    }
+                } catch (error) {
+                    statusText.innerText = `X Error: ${error.message}`;
+                    statusText.className = "mt-3 text-sm text-red-600 font-medium";
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = "Upload PDF";
+                }
+            }
+
+            async function performSearch() {
+                const query = document.getElementById("searchInput").value;
+                const container = document.getElementById("resultsContainer");
+                const btn = document.getElementById("searchBtn");
+
+                if (!query.trim()) return;
+
+                btn.disabled = true;
+                btn.innerText = "Searching...";
+                container.innerHTML = '<p class="text-slate-500 text-sm animate-pulse">Querying vector space...</p>';
+
+                try {
+                    const response = await fetch("/search", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ query: query, top_k: 4 }),
+                    });
+
+                    const data = await response.json();
+                    container.innerHTML = "";
+
+                    if (data.results && data.results.length > 0) {
+                        data.results.forEach((res, idx) => {
+                            // FAISS L2 distance: lower is better (closer)
+                            const score = res.score.toFixed(2);
+                            container.innerHTML += `
+                            <div class="p-5 bg-slate-50 rounded-lg border border-slate-100 transition-all hover:shadow-md">
+                                <div class="flex justify-between items-start mb-3">
+                                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Result ${idx + 1}</span>
+                                    <span class="text-xs font-medium text-slate-400">L2 Distance: ${score}</span>
+                                </div>
+                                <p class="text-slate-700 text-sm leading-relaxed">${res.text}</p>
+                            </div>
+                        `;
+                        });
+                    } else {
+                        container.innerHTML = '<p class="text-slate-500 text-sm">No context found. Upload a document first.</p>';
+                    }
+                } catch (error) {
+                    container.innerHTML = `<p class="text-red-500 text-sm">Error: ${error.message}</p>`;
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = "Search";
+                }
+            }
+        </script>
+    </body>
+</html>
