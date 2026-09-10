@@ -98,16 +98,27 @@
                     if (data.results && data.results.length > 0) {
                         data.results.forEach((res, idx) => {
                             // FAISS L2 distance: lower is better (closer)
-                            const score = res.score.toFixed(2);
-                            container.innerHTML += `
-                            <div class="p-5 bg-slate-50 rounded-lg border border-slate-100 transition-all hover:shadow-md">
-                                <div class="flex justify-between items-start mb-3">
-                                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Result ${idx + 1}</span>
-                                    <span class="text-xs font-medium text-slate-400">L2 Distance: ${score}</span>
-                                </div>
-                                <p class="text-slate-700 text-sm leading-relaxed">${res.text}</p>
-                            </div>
-                        `;
+                            const result = document.createElement("div");
+                            result.className = "p-5 bg-slate-50 rounded-lg border border-slate-100 transition-all hover:shadow-md";
+
+                            const header = document.createElement("div");
+                            header.className = "flex justify-between items-start mb-3";
+
+                            const label = document.createElement("span");
+                            label.className = "text-xs font-bold uppercase tracking-wider text-indigo-600";
+                            label.textContent = `Result ${idx + 1}`;
+
+                            const distance = document.createElement("span");
+                            distance.className = "text-xs font-medium text-slate-400";
+                            distance.textContent = `L2 Distance: ${res.score.toFixed(2)}`;
+
+                            const text = document.createElement("p");
+                            text.className = "text-slate-700 text-sm leading-relaxed";
+                            text.textContent = res.text;
+
+                            header.append(label, distance);
+                            result.append(header, text);
+                            container.appendChild(result);
                         });
                     } else {
                         container.innerHTML = '<p class="text-slate-500 text-sm">No context found. Upload a document first.</p>';

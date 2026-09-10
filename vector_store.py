@@ -23,6 +23,9 @@ class VectorStore:
 
     def search(self, query: str, top_k: int = 4) -> list[dict]:
         """Converts the query to a vector and retrieves the closest matches."""
+        if top_k <= 0:
+            raise ValueError("top_k must be greater than zero")
+
         if self.index.ntotal == 0:
             return []
 
